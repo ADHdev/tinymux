@@ -5078,6 +5078,7 @@ static DWORD WINAPI mux_listen_thread(LPVOID pVoid)
                 ReleaseSemaphore(hSlaveRequestStackSemaphore, 1, nullptr);
             }
         }
+        config_socket(socket_client);
         d = initializesock(socket_client, &SockAddr);
 
         // Add this socket to the IO completion port.

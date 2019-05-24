@@ -2018,10 +2018,12 @@ void new_connection2(DESC* d)
 DESC *new_connection(PortInfo *Port, int *piSocketError)
 {
     DESC *d = new_connection0(Port, piSocketError);
+#ifdef UNIX_SSL
     if (nullptr != d && SocketState::SSLAcceptAgain == d->ss)
     {
         d = new_connection1(d, piSocketError);
     }
+#endif
     if (nullptr != d && SocketState::Accepted == d->ss)
     {
         new_connection2(d);

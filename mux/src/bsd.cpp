@@ -1682,12 +1682,16 @@ void shovechars(int nPorts, PortInfo aPorts[])
                 newd = new_connection_initial(&aPorts[i]);
                 if (nullptr != newd)
                 {
+                   if (SocketState::SSLAcceptAgain == newd->ss)
+                   {
+                       new_connection_continue(newd);
+                   }
+
                    if (  !IS_INVALID_SOCKET(newd->socket)
                       && maxd <= newd->socket)
                    {
                        maxd = newd->socket + 1;
                    }
-                   new_connection_continue(newd);
                 }
             }
         }
@@ -1703,6 +1707,11 @@ void shovechars(int nPorts, PortInfo aPorts[])
                 STARTLOG(LOG_ALWAYS, "NET", "SSL");
                 log_printf(T("shovechars(), CheckInput (%u)."), d->socket);
                 ENDLOG;
+
+                if (SocketState::SSLAcceptAgain == d->ss)
+                {
+                    new_connection_continue(d);
+                }
 
                 if (SocketState::SSLAcceptWantRead == d->ss)
                 {
@@ -1738,7 +1747,23 @@ void shovechars(int nPorts, PortInfo aPorts[])
             //
             if (CheckOutput(d->socket))
             {
-                process_output(d, true);
+                STARTLOG(LOG_ALWAYS, "NET", "SSL");
+                log_printf(T("shovechars(), CkeckOutput (%u)."), d->socket);
+                ENDLOG;
+
+                if (SocketState::SSLAcceptAgain == d->ss)
+                {
+                    new_connection_continue(d);
+                }
+
+                if (SocketState::SSLAcceptWantWrite == d->ss)
+                {
+                    new_connection_continue(d);
+                }
+                else
+                {
+                    process_output(d, true);
+                }
             }
         }
     }
@@ -2044,22 +2069,6 @@ void new_connection_continue(DESC* d)
     mudstate.debug_cmd = cmdsave;
 }
 #endif
-
-DESC *new_connection(PortInfo *Port)
-{
-    DESC *d = new_connection_initial(Port);
-#ifdef UNIX_SSL
-    if (nullptr != d && SocketState::SSLAcceptAgain == d->ss)
-    {
-        new_connection_continue(d);
-    }
-#endif
-    if (nullptr != d && SocketState::Accepted == d->ss)
-    {
-        new_connection_final(d);
-    }
-    return d;
-}
 
 #endif // UNIX_NETWORKING
 

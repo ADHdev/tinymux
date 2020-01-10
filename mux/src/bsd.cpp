@@ -50,7 +50,7 @@ static void site_mon_send(SOCKET, const UTF8 *, DESC *, const UTF8 *);
 static DESC *initializesock(SOCKET, MUX_SOCKADDR *msa);
 #if defined(UNIX_NETWORKING)
 static DESC *new_connection_initial(PortInfo *Port);
-static void new_connection_continue(DESC* d);
+static bool new_connection_continue(DESC* d);
 static void new_connection_final(DESC* d);
 #endif
 static bool process_input(DESC *);
@@ -1682,12 +1682,14 @@ void shovechars(int nPorts, PortInfo aPorts[])
                 newd = new_connection_initial(&aPorts[i]);
                 if (nullptr != newd)
                 {
+                   bool fConnectionOpen = true;
                    if (SocketState::SSLAcceptAgain == newd->ss)
                    {
-                       new_connection_continue(newd);
+                       fConnectionOpen = new_connection_continue(newd);
                    }
 
-                   if (  !IS_INVALID_SOCKET(newd->socket)
+                   if (  fConnectionOpen
+                      && !IS_INVALID_SOCKET(newd->socket)
                       && maxd <= newd->socket)
                    {
                        maxd = newd->socket + 1;
@@ -1710,12 +1712,12 @@ void shovechars(int nPorts, PortInfo aPorts[])
 
                 if (SocketState::SSLAcceptAgain == d->ss)
                 {
-                    new_connection_continue(d);
+                    if (!new_connection_continue(d)) continue;
                 }
 
                 if (SocketState::SSLAcceptWantRead == d->ss)
                 {
-                    new_connection_continue(d);
+                    if (!new_connection_continue(d)) continue;
                 }
                 else
                 {
@@ -1753,12 +1755,12 @@ void shovechars(int nPorts, PortInfo aPorts[])
 
                 if (SocketState::SSLAcceptAgain == d->ss)
                 {
-                    new_connection_continue(d);
+                    if (!new_connection_continue(d)) continue;
                 }
 
                 if (SocketState::SSLAcceptWantWrite == d->ss)
                 {
-                    new_connection_continue(d);
+                    if (!new_connection_continue(d)) continue;
                 }
                 else
                 {
@@ -1876,7 +1878,9 @@ void check_connection_failure(int iSocketError)
     if (  iSocketError
        && iSocketError != SOCKET_EINTR)
     {
-        log_perror(T("NET"), T("FAIL"), nullptr, T("new_connection"));
+        STARTLOG(LOG_ALWAYS, "NET", "FAIL");
+        log_printf(T("new_connection() failed with %u."), iSocketError);
+        ENDLOG;
     }
 }
 
@@ -1989,7 +1993,7 @@ DESC *new_connection_initial(PortInfo *Port)
 #ifdef UNIX_SSL
 // new_connection_continue(). Call when SocketState::SSLAcceptAgain, SocketState::SSLAcceptWantWrite, and SocketState::SSLAcceptWantread
 //
-void new_connection_continue(DESC* d)
+bool new_connection_continue(DESC* d)
 {
     const UTF8 *cmdsave = mudstate.debug_cmd;
     mudstate.debug_cmd = T("< new_connection_continue >");
@@ -2064,9 +2068,11 @@ void new_connection_continue(DESC* d)
 
             check_connection_failure(iSocketError);
             errno = 0;
+            return false;
         }
     }
     mudstate.debug_cmd = cmdsave;
+    return true;
 }
 #endif
 
@@ -3855,7 +3861,7 @@ static void process_input_helper(DESC *d, char *pBytes, int nBytes)
                     {
                        d->ssl_session = SSL_new(tls_ctx);
                        SSL_set_fd(d->ssl_session, d->socket);
-                       SSL_accept(d->ssl_session);
+                       d->ss = SocketState::SSLAcceptAgain;
                     }
                     break;
 #endif

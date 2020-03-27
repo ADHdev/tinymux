@@ -1991,7 +1991,7 @@ DESC *new_connection_initial(PortInfo *Port)
 }
 
 #ifdef UNIX_SSL
-// new_connection_continue(). Call when SocketState::SSLAcceptAgain, SocketState::SSLAcceptWantWrite, and SocketState::SSLAcceptWantread
+// new_connection_continue(). Call when SocketState::SSLAcceptAgain, SocketState::SSLAcceptWantWrite, and SocketState::SSLAcceptWantRead
 //
 bool new_connection_continue(DESC* d)
 {

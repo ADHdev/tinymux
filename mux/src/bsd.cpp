@@ -1683,11 +1683,12 @@ void shovechars(int nPorts, PortInfo aPorts[])
                 if (nullptr != newd)
                 {
                    bool fConnectionOpen = true;
+#ifdef UNIX_SSL
                    if (SocketState::SSLAcceptAgain == newd->ss)
                    {
                        fConnectionOpen = new_connection_continue(newd);
                    }
-
+#endif
                    if (  fConnectionOpen
                       && !IS_INVALID_SOCKET(newd->socket)
                       && maxd <= newd->socket)
@@ -1710,16 +1711,17 @@ void shovechars(int nPorts, PortInfo aPorts[])
                 log_printf(T("shovechars(), CheckInput (%u)."), d->socket);
                 ENDLOG;
 
+#ifdef UNIX_SSL
                 if (SocketState::SSLAcceptAgain == d->ss)
                 {
                     if (!new_connection_continue(d)) continue;
                 }
-
                 if (SocketState::SSLAcceptWantRead == d->ss)
                 {
                     if (!new_connection_continue(d)) continue;
                 }
                 else
+#endif
                 {
                     // Undo autodark
                     //
@@ -1752,7 +1754,7 @@ void shovechars(int nPorts, PortInfo aPorts[])
                 STARTLOG(LOG_ALWAYS, "NET", "SSL");
                 log_printf(T("shovechars(), CkeckOutput (%u)."), d->socket);
                 ENDLOG;
-
+#ifdef UNIX_SSL
                 if (SocketState::SSLAcceptAgain == d->ss)
                 {
                     if (!new_connection_continue(d)) continue;
@@ -1763,6 +1765,7 @@ void shovechars(int nPorts, PortInfo aPorts[])
                     if (!new_connection_continue(d)) continue;
                 }
                 else
+#endif
                 {
                     process_output(d, true);
                 }
